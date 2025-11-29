@@ -4,22 +4,26 @@ from stqdm import stqdm
 from dotenv import load_dotenv
 from spotify2tidal import Spotify2Tidal
 
-col1, col2 = st.columns(2)
 
-col1.title("""
-Spotify Credentials
-""")
-spotify_username = col1.text_input("Spotify Username:", "")
-spotify_client_id = col1.text_input("Client ID:", "")
-spotify_client_secret = col1.text_input("Secret Token:", "")
+with st.form("credentials"):
+    col1, col2 = st.columns(2)
 
-col2.title("""
-Tidal Credentials
-""")
-tidal_username = col2.text_input("Tidal Username:", "")
-tidal_password = col2.text_input("Password:", "")
+    col1.title("""
+    Spotify Credentials
+    """)
+    spotify_username = col1.text_input("Spotify Username:", "")
+    spotify_client_id = col1.text_input("Client ID:", "")
+    spotify_client_secret = col1.text_input("Secret Token:", "")
 
-if all([spotify_username, spotify_client_id, spotify_client_secret, tidal_username, tidal_password]):
+    col2.title("""
+    Tidal Credentials
+    """)
+    tidal_username = col2.text_input("Tidal Username:", "")
+    tidal_password = col2.text_input("Password:", "")
+    
+    connect = st.form_submit_button("connect")
+
+if connect and all([spotify_username, spotify_client_id, spotify_client_secret, tidal_username, tidal_password]):
     content_transfer = Spotify2Tidal(
         tidal_username=tidal_username,
         tidal_password=tidal_password,
