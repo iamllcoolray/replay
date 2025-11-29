@@ -26,7 +26,7 @@ if all([spotify_username, spotify_client_id, spotify_client_secret, tidal_userna
         spotify_username=spotify_username,
         spotify_client_id=spotify_client_id,
         spotify_client_secret=spotify_client_secret,
-        spotify_redirect_uri="http://127.0.0.1",
+        spotify_redirect_uri="https://iamreplay.streamlit.app/callback",
         spotify_discover_weekly_id=None,
     )
 
