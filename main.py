@@ -41,37 +41,47 @@ if st.session_state.connected:
     if st.button("disconnect"):
         st.session_state.connected = False
         st.rerun()
+    
+    try:
+        content_transfer = Spotify2Tidal(
+            tidal_username=st.session_state.tidal_username,
+            tidal_password=st.session_state.tidal_password,
+            spotify_username=st.session_state.spotify_username,
+            spotify_client_id=st.session_state.spotify_client_id,
+            spotify_client_secret=st.session_state.spotify_client_secret,
+            spotify_redirect_uri="https://iamreplay.streamlit.app/callback",
+            spotify_discover_weekly_id=None,
+        )
 
-    content_transfer = Spotify2Tidal(
-        tidal_username=st.session_state.tidal_username,
-        tidal_password=st.session_state.tidal_password,
-        spotify_username=st.session_state.spotify_username,
-        spotify_client_id=st.session_state.spotify_client_id,
-        spotify_client_secret=st.session_state.spotify_client_secret,
-        spotify_redirect_uri="https://iamreplay.streamlit.app/callback",
-        spotify_discover_weekly_id=None,
-    )
+        is_transfer_tracks = st.checkbox("Transfer Tracks")
+        is_transfer_albums = st.checkbox("Transfer Albums")
+        is_transfer_artists = st.checkbox("Transfer Artists")
+        is_transfer_playlists = st.checkbox("Transfer Playlists")
 
-    is_transfer_tracks = st.checkbox("Transfer Tracks")
-    is_transfer_albums = st.checkbox("Transfer Albums")
-    is_transfer_artists = st.checkbox("Transfer Artists")
-    is_transfer_playlists = st.checkbox("Transfer Playlists")
+        is_transfer = st.button("transfer")
 
-    is_transfer = st.button("transfer")
+        if is_transfer:
+            tasks = []
+            if is_transfer_tracks:
+                tasks.append(("Tracks", content_transfer.copy_all_saved_spotify_tracks()))
+            if is_transfer_albums:
+                tasks.append(("Albums", content_transfer.copy_all_saved_spotify_albums))
+            if is_transfer_artists:
+                tasks.append(("Artists", content_transfer.copy_all_saved_spotify_artists))
+            if is_transfer_playlists:
+                tasks.append(("Playlists", content_transfer.copy_all_spotify_playlists))
 
-    if is_transfer:
-        tasks = []
-        if is_transfer_tracks:
-            tasks.append(("Tracks", content_transfer.copy_all_saved_spotify_tracks()))
-        if is_transfer_albums:
-            tasks.append(("Albums", content_transfer.copy_all_saved_spotify_albums))
-        if is_transfer_artists:
-            tasks.append(("Artists", content_transfer.copy_all_saved_spotify_artists))
-        if is_transfer_playlists:
-            tasks.append(("Playlists", content_transfer.copy_all_spotify_playlists))
+            for name, task_func in stqdm(tasks, desc="Transferring..."):
+                st.write(f"Copying {name}...")
+                task_func()
 
-        for name, task_func in stqdm(tasks, desc="Transferring..."):
-            st.write(f"Copying {name}...")
-            task_func()
+            st.success(f"Transfer complete!")
 
-        st.success(f"Transfer complete!")
+    except Exception as e:
+        st.error(f"Error: {str(e)}")
+        st.write("Full error details:")
+        st.exception(e)
+        if st.button("Try Again"):
+            st.session_state.connected = False
+            st.rerun()
+
