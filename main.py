@@ -1,9 +1,7 @@
 import streamlit as st
-from stqdm import stqdm
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
-import tidalapi
-import threading
+import tidalapi.session
 
 # Initialize session state
 if 'spotify_token' not in st.session_state:
@@ -84,7 +82,7 @@ if st.session_state.spotify_token and st.session_state.tidal_session is None:
         if st.button("Start Tidal Authorization", type="primary"):
             try:
                 with st.spinner("Setting up Tidal authentication..."):
-                    session = tidalapi.Session()
+                    session = tidalapi.session.Session()
                     login, future = session.login_oauth()
                     
                     # Store in session state
@@ -178,27 +176,43 @@ if st.session_state.spotify_token and st.session_state.tidal_session:
                     fail_count = 0
                     
                     for idx, item in enumerate(all_tracks):
-                        track = item['track']
-                        if track:
-                            track_name = track['name']
-                            artist_name = track['artists'][0]['name']
-                            
-                            try:
-                                # Search on Tidal
-                                search_results = tidal.search(f"{artist_name} {track_name}", models=[tidalapi.media.Track])
-                                if search_results['tracks']:
-                                    tidal_track = search_results['tracks'][0]
+                        if not isinstance(item, dict):
+                            continue
+                        
+                        track = item.get('track')
+                        if not track or not isinstance(track, dict):
+                            continue
+                        
+                        track_name = track.get('name', 'Unknown Track')
+                        artists = track.get('artists')
+                        
+                        artist_name = 'Unknown Artist'
+                        if artists and isinstance(artists, list) and len(artists) > 0:
+                            first_artist = artists[0]
+                            if isinstance(first_artist, dict):
+                                artist_name = first_artist.get('name', 'Unknown Artist')
+                        
+                        try:
+                            # Search on Tidal
+                            search_results = tidal.search(f"{artist_name} {track_name}")
+                            if search_results and isinstance(search_results, dict):
+                                tracks_list = search_results.get('tracks')
+                                if tracks_list and isinstance(tracks_list, list) and len(tracks_list) > 0:
+                                    tidal_track = tracks_list[0]
                                     tidal.user.favorites.add_track(tidal_track.id)
                                     st.write(f"✓ Added: {track_name} by {artist_name}")
                                     success_count += 1
                                 else:
                                     st.write(f"✗ Not found: {track_name} by {artist_name}")
                                     fail_count += 1
-                            except Exception as e:
-                                st.write(f"✗ Error with: {track_name} - {str(e)}")
+                            else:
+                                st.write(f"✗ Not found: {track_name} by {artist_name}")
                                 fail_count += 1
-                            
-                            progress_bar.progress((idx + 1) / len(all_tracks))
+                        except Exception as e:
+                            st.write(f"✗ Error with: {track_name} - {str(e)}")
+                            fail_count += 1
+                        
+                        progress_bar.progress((idx + 1) / len(all_tracks))
                     
                     st.success(f"✅ Tracks: {success_count} added, {fail_count} failed")
                 
@@ -221,17 +235,34 @@ if st.session_state.spotify_token and st.session_state.tidal_session:
                     fail_count = 0
                     
                     for idx, item in enumerate(all_albums):
-                        album = item['album']
-                        album_name = album['name']
-                        artist_name = album['artists'][0]['name']
+                        if not isinstance(item, dict):
+                            continue
+                        
+                        album = item.get('album')
+                        if not album or not isinstance(album, dict):
+                            continue
+                        
+                        album_name = album.get('name', 'Unknown Album')
+                        artists = album.get('artists')
+                        
+                        artist_name = 'Unknown Artist'
+                        if artists and isinstance(artists, list) and len(artists) > 0:
+                            first_artist = artists[0]
+                            if isinstance(first_artist, dict):
+                                artist_name = first_artist.get('name', 'Unknown Artist')
                         
                         try:
-                            search_results = tidal.search(f"{artist_name} {album_name}", models=[tidalapi.media.Album])
-                            if search_results['albums']:
-                                tidal_album = search_results['albums'][0]
-                                tidal.user.favorites.add_album(tidal_album.id)
-                                st.write(f"✓ Added: {album_name} by {artist_name}")
-                                success_count += 1
+                            search_results = tidal.search(f"{artist_name} {album_name}")
+                            if search_results and isinstance(search_results, dict):
+                                albums_list = search_results.get('albums')
+                                if albums_list and isinstance(albums_list, list) and len(albums_list) > 0:
+                                    tidal_album = albums_list[0]
+                                    tidal.user.favorites.add_album(tidal_album.id)
+                                    st.write(f"✓ Added: {album_name} by {artist_name}")
+                                    success_count += 1
+                                else:
+                                    st.write(f"✗ Not found: {album_name} by {artist_name}")
+                                    fail_count += 1
                             else:
                                 st.write(f"✗ Not found: {album_name} by {artist_name}")
                                 fail_count += 1
@@ -262,15 +293,23 @@ if st.session_state.spotify_token and st.session_state.tidal_session:
                     fail_count = 0
                     
                     for idx, artist in enumerate(all_artists):
-                        artist_name = artist['name']
+                        if not artist or not isinstance(artist, dict):
+                            continue
+                        
+                        artist_name = artist.get('name', 'Unknown Artist')
                         
                         try:
-                            search_results = tidal.search(artist_name, models=[tidalapi.media.Artist])
-                            if search_results['artists']:
-                                tidal_artist = search_results['artists'][0]
-                                tidal.user.favorites.add_artist(tidal_artist.id)
-                                st.write(f"✓ Added: {artist_name}")
-                                success_count += 1
+                            search_results = tidal.search(artist_name)
+                            if search_results and isinstance(search_results, dict):
+                                artists_list = search_results.get('artists')
+                                if artists_list and isinstance(artists_list, list) and len(artists_list) > 0:
+                                    tidal_artist = artists_list[0]
+                                    tidal.user.favorites.add_artist(tidal_artist.id)
+                                    st.write(f"✓ Added: {artist_name}")
+                                    success_count += 1
+                                else:
+                                    st.write(f"✗ Not found: {artist_name}")
+                                    fail_count += 1
                             else:
                                 st.write(f"✗ Not found: {artist_name}")
                                 fail_count += 1
@@ -287,43 +326,86 @@ if st.session_state.spotify_token and st.session_state.tidal_session:
                     st.subheader("📝 Transferring Playlists")
                     with st.spinner("Fetching your playlists from Spotify..."):
                         playlists = sp.current_user_playlists(limit=50)
-                        user_id = sp.me()['id']
+                        user_info = sp.me()
+                        user_id = None
+                        if user_info and isinstance(user_info, dict):
+                            user_id = user_info.get('id')
                         st.info(f"Found {len(playlists['items'])} playlists")
                     
                     for playlist in playlists['items']:
-                        if playlist['owner']['id'] == user_id:  # Only user's own playlists
-                            playlist_name = playlist['name']
-                            st.write(f"📝 Creating playlist: {playlist_name}")
+                        if not playlist or not isinstance(playlist, dict):
+                            continue
+                        
+                        owner = playlist.get('owner')
+                        if not owner or not isinstance(owner, dict):
+                            continue
+                        
+                        if owner.get('id') != user_id:
+                            continue
+                        
+                        playlist_name = playlist.get('name', 'Unnamed Playlist')
+                        playlist_id = playlist.get('id')
+                        st.write(f"📝 Creating playlist: {playlist_name}")
+                        
+                        try:
+                            # Create playlist on Tidal
+                            new_playlist = tidal.user.create_playlist(playlist_name, "")
                             
-                            try:
-                                # Create playlist on Tidal
-                                new_playlist = tidal.user.create_playlist(playlist_name, "")
+                            # Get tracks from Spotify playlist
+                            if not playlist_id:
+                                continue
+                            
+                            tracks_results = sp.playlist_tracks(playlist_id)
+                            track_ids = []
+                            
+                            if not tracks_results or not isinstance(tracks_results, dict):
+                                continue
+                            
+                            items_list = tracks_results.get('items')
+                            if not items_list or not isinstance(items_list, list):
+                                continue
+                            
+                            for item in items_list:
+                                if not item or not isinstance(item, dict):
+                                    continue
                                 
-                                # Get tracks from Spotify playlist
-                                tracks_results = sp.playlist_tracks(playlist['id'])
-                                track_ids = []
+                                track = item.get('track')
+                                if not track or not isinstance(track, dict):
+                                    continue
                                 
-                                for item in tracks_results['items']:
-                                    if item['track']:
-                                        track = item['track']
-                                        try:
-                                            search_results = tidal.search(
-                                                f"{track['artists'][0]['name']} {track['name']}", 
-                                                models=[tidalapi.media.Track]
-                                            )
-                                            if search_results['tracks']:
-                                                track_ids.append(search_results['tracks'][0].id)
-                                        except:
-                                            pass
+                                track_name = track.get('name', '')
+                                artists = track.get('artists')
                                 
-                                # Add tracks to Tidal playlist
-                                if track_ids:
-                                    new_playlist.add(track_ids)
-                                    st.write(f"✓ Created: {playlist_name} ({len(track_ids)} tracks)")
-                                else:
-                                    st.write(f"⚠️ Created: {playlist_name} (no tracks found)")
-                            except Exception as e:
-                                st.write(f"✗ Failed to create: {playlist_name} - {str(e)}")
+                                if not artists or not isinstance(artists, list) or len(artists) == 0:
+                                    continue
+                                
+                                first_artist = artists[0]
+                                if not isinstance(first_artist, dict):
+                                    continue
+                                
+                                artist_name = first_artist.get('name', '')
+                                if not artist_name:
+                                    continue
+                                
+                                try:
+                                    search_results = tidal.search(f"{artist_name} {track_name}")
+                                    if not search_results or not isinstance(search_results, dict):
+                                        continue
+                                    
+                                    tracks_list = search_results.get('tracks')
+                                    if tracks_list and isinstance(tracks_list, list) and len(tracks_list) > 0:
+                                        track_ids.append(tracks_list[0].id)
+                                except:
+                                    pass
+                            
+                            # Add tracks to Tidal playlist
+                            if track_ids:
+                                new_playlist.add(track_ids)
+                                st.write(f"✓ Created: {playlist_name} ({len(track_ids)} tracks)")
+                            else:
+                                st.write(f"⚠️ Created: {playlist_name} (no tracks found)")
+                        except Exception as e:
+                            st.write(f"✗ Failed to create: {playlist_name} - {str(e)}")
                     
                     st.success("✅ Playlists transfer complete!")
                 
