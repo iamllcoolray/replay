@@ -19,7 +19,7 @@ spotify_code = query_params.get('code', None)
 
 # Show credentials form (only Spotify credentials needed now)
 if not st.session_state.credentials_entered:
-    st.title("🎵 Spotify to Tidal Transfer")
+    st.title("🎵 Replay: Spotify to Tidal Transfer")
     st.write("Transfer your music library from Spotify to Tidal")
     
     with st.form("credentials"):
