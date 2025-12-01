@@ -25,7 +25,8 @@ if not st.session_state.credentials_entered:
     with st.form("credentials"):
         st.subheader("Spotify API Credentials")
         st.markdown("Get these from [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)")
-        
+        st.info("💡 Set the Redirct URI to https://iamreplay.streamlit.app/callback")
+
         spotify_client_id = st.text_input("Spotify Client ID:", "")
         spotify_client_secret = st.text_input("Spotify Client Secret:", "", type="password")
         
